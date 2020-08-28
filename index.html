@@ -2,13 +2,20 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
 
     <title>Snake</title>
 
     <style>
+        html, body {
+            background-color: #97cec2;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
         canvas {
-            background-color: #66157A;
+            background-color: #4b9b8a;
             margin: auto;
             position: absolute;
             top: 0;
@@ -25,9 +32,11 @@
         const ctx = canvas.getContext('2d');
         let WIDTH = 600;
         let HEIGTH = 600;
-        const FPS = 30;
+        const FPS = 8;
         let tileSize;
+        const tilesCount = 30;
         let snake;
+        let playLabel;
         let playing;
         const keys = {
             left: 65,
@@ -35,52 +44,251 @@
             up: 87,
             down: 83
         }
+        let globalTouch = [0, 0];
+        let offset = [0, 0];
+        let lose;
+        let fruits;
+        let timeToNewFruit;
+        const newFruitDelay = 6;
+        let canMove;
+        let totalFruits;
+        let winner;
+        const themeMusic = new Sound('./sounds/The Bard.ogg');
+        const pickFruitSound = new Sound('./sounds/Menu Selection Click.wav');
+        const loseSound = new Sound('./sounds/lose sound 1_0.wav');
+        const winSound = new Sound('./sounds/Win sound.wav');
+        let firstClick;
+
+        window.addEventListener('touchstart', touchStart);
+        window.addEventListener('touchmove', touchMove);
+        window.addEventListener('touchend', touchEnd);
+        window.addEventListener('orientationchange', orientationChange);
 
         window.addEventListener('keydown', keyDown);
+        window.addEventListener('click', click);
+
         window.addEventListener('resize', resizeWindow);
 
+        function click(){
+            if(firstClick){
+                themeMusic.play();
+                firstClick = false;
+            }
+        }
+
+        function orientationChange(){
+            if(Math.abs(window.orientation) != 90){
+                playing = false;
+            }
+            
+            if(Math.abs(window.orientation) == 90) {
+                openFullscreen();
+            }
+            else{
+                closeFullscreen();
+            }
+
+            resizeWindow();
+            playLabel.updateMessage();
+        }
+
+        function touchMove(event){
+            event.preventDefault();
+            const touch = event.touches[0];
+
+            offset = [touch.pageX - globalTouch[0], touch.pageY - globalTouch[1]];
+        }
+
+        function touchEnd(){
+            if(Math.abs(window.orientation) == 90){
+                if(Math.abs(offset[0]) > Math.abs(offset[1])){
+                    if(offset[0] != 0){
+                        snake.direction = [offset[0] / Math.abs(offset[0]), 0];
+                    }
+                }
+                else{
+                    if(offset[1] != 0){
+                        snake.direction = [0, offset[1] / Math.abs(offset[1])];
+                    }
+                }
+                playing = true;
+            }
+        }
+
+        function openFullscreen() {
+            const elemento = document.body;
+            if (elemento.requestFullscreen) {
+                elemento.requestFullscreen();
+            } else if (elemento.mozRequestFullScreen) { /* Firefox */
+                elemento.mozRequestFullScreen();
+            } else if (elemento.webkitRequestFullscreen) { /* Chrome, Safari and Opera */
+                elemento.webkitRequestFullscreen();
+            } else if (elemento.msRequestFullscreen) { /* IE/Edge */
+                elemento.msRequestFullscreen();
+            }
+        }
+
+        function closeFullscreen() {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.mozCancelFullScreen) { /* Firefox */
+                document.mozCancelFullScreen();
+            } else if (document.webkitExitFullscreen) { /* Chrome, Safari and Opera */
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) { /* IE/Edge */
+                document.msExitFullscreen();
+            }
+        }
+
+        function touchStart(event){
+            event.preventDefault();
+            const touch = event.touches[0];
+            globalTouch = [touch.pageX, touch.pageY];
+            
+            if(lose){
+                init();
+            }
+        }
+
         function keyDown(event){
+            if(firstClick){
+                themeMusic.play();
+                firstClick = false;
+            }
+
             if(!playing && (event.keyCode == keys.up || event.keyCode == keys.down || event.keyCode == keys.left || event.keyCode == keys.right)){
                 playing = true;
             }
 
-            switch(event.keyCode){
-                case keys.left:
-                    snake.direction = [-1, 0];
-                    break;
-                case keys.right:
-                    snake.direction = [1, 0];
-                    break;
-                case keys.up:
-                    snake.direction = [0, -1];
-                    break;
-                case keys.down:
-                    snake.direction = [0, 1];
-                    break;
+            if(canMove){
+                switch(event.keyCode){
+                    case keys.left:
+                        if(snake.direction[0] != 1 && snake.direction[1] != 0){
+                            snake.direction = [-1, 0];
+                        }
+                        break;
+                    case keys.right:
+                        if(snake.direction[0] != -1 && snake.direction[1] != 0){
+                            snake.direction = [1, 0];
+                        }
+                        break;
+                    case keys.up:
+                        if(snake.direction[0] != 0 && snake.direction[1] != 1){
+                            snake.direction = [0, -1];
+                        }
+                        break;
+                    case keys.down:
+                        if(snake.direction[0] != 0 && snake.direction[1] != -1){
+                            snake.direction = [0, 1];
+                        }
+                        break;
+                }
+
+                canMove = false;
+            }
+
+            if(lose){
+                init();
             }
         }
 
         function resizeWindow(){
-            WIDTH = window.innerWidth;
-            HEIGTH = window.innerHeight;
+            WIDTH = window.innerWidth - 20;
+            HEIGTH = window.innerHeight - 20;
+            
+            tileSize = Math.max(Math.floor(HEIGTH/tilesCount), Math.floor(WIDTH/tilesCount));
+
+            WIDTH = Math.floor(WIDTH/tilesCount) * tileSize;
+            HEIGTH = Math.floor(HEIGTH/tilesCount) * tileSize;
+            
             canvas.width = WIDTH;
             canvas.height = HEIGTH;
-            
-            tileSize = Math.max(Math.floor(HEIGTH/60), Math.floor(WIDTH/60));
+
+            totalFruits = WIDTH * HEIGTH;
+        }
+
+        function isMobileDevice(){
+            return /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
         }
 
         function newGame(){
             snake = new Snake();
+            playLabel = new PlayLabel();
+            lose = false;
+            winner = false;
+            fruits = new Fruits();
+            firstClick = true;
+
             playing = false;
+        }
+
+        function Fruits(){
+            this.locations = [];
+
+            this.insertAt = function(x, y){
+                this.locations.push([x, y]);
+            }
+
+            this.draw = function(){
+                ctx.fillStyle = '#ff3333';
+
+                for(let fruitLocation of this.locations){
+                    ctx.fillRect(fruitLocation[0]*tileSize, fruitLocation[1]*tileSize, tileSize, tileSize)
+                }
+            }
+
+            this.remove = function(index){
+                this.locations.splice(index, 1);
+            }
+        }
+
+        function PlayLabel(){
+            this.text;
+            this.color = '#97cec2';
+
+            this.messages = {
+                portrait: 'Rotacione o dispositivo para jogar',
+                landscape: 'Arraste a tela para jogar',
+                pc: 'Pressione A, W, S, D para jogar'
+            }
+
+            this.updateMessage = function(){
+                if(isMobileDevice()){
+                    if(Math.abs(window.orientation) == 90){
+                        this.text = this.messages.landscape;
+                    }
+                    else{
+                        this.text = this.messages.portrait;
+                    }
+                }
+                else{
+                    this.text = this.messages.pc;
+                }
+            }
+
+            this.updateMessage();
+
+            this.draw = function(){
+                ctx.fillStyle = this.color;
+                ctx.font = tileSize*2 + 'px Arial';
+                ctx.fillText(this.text, WIDTH/2 - ctx.measureText(this.text).width/2, HEIGTH/2);
+            }
         }
 
         function Snake(){
             this.body = [[10,10], [10,11], [10,12]];
-            this.color = '#99ff66'; //A686C2
+            this.color = '#19342e';
             this.direction = [0, -1];
+            this.timeAnimation = 2;
+            this.currentSprite = 0;
+            this.colorsAnimation = ['#fff', '#000', '#19342e']
+            this.animating = false;
 
             this.update = function(){
                 let nextPos = [this.body[0][0] + this.direction[0], this.body[0][1] + this.direction[1]];
+                canMove = true;
+
+                this.detectCollision(nextPos);
 
                 if(!playing){
                     if(this.direction[1] == -1 && nextPos[1] <= (HEIGTH * 0.1)/tileSize){
@@ -97,19 +305,52 @@
                     }
                 }
 
-                if(this.body[1][0] == nextPos[0] && this.body[1][1] == nextPos[1]){
-                    this.body.reverse();
-                    nextPos = [this.body[0][0] + this.direction[0], this.body[0][1] + this.direction[1]];
-                }
-
                 this.body.pop();
-                this.body.splice(0, 0, nextPos)
+                this.body.splice(0, 0, nextPos);
+
+                if(this.animating){
+                    this.animation();
+                }
             }
 
-            this.insert = function(){
-                let nextPos = [this.body[0][0] + this.direction[0], this.body[0][1] + this.direction[1]];
+            this.animation = function(){
+                switch(this.currentSprite){
+                    case 0:
+                        this.color = this.colorsAnimation[0];
+                        this.currentSprite++;
+                        break;
+                    case 1:
+                        this.color = this.colorsAnimation[1];
+                        this.currentSprite++;
+                        break;
+                    case 2:
+                        this.color = this.colorsAnimation[2];
+                        this.animating = false;
+                        this.currentSprite = 0;
+                        break;
+                }
+            }
 
-                this.body.splice(0, 0, nextPos)
+            this.detectCollision = function(nextPos){
+                if(nextPos[0] < 0 || nextPos[0] >= WIDTH/tileSize || nextPos[1] < 0 || nextPos[1] >= HEIGTH/tileSize){
+                    lose = true;
+                }
+
+                for(let i = 0; i < fruits.locations.length; i++){
+                    if(nextPos[0] == fruits.locations[i][0] && nextPos[1] == fruits.locations[i][1]){
+                        fruits.remove(i);
+                        this.body.push(this.body[this.body.length - 1]);
+                        this.currentSprite = 0;
+                        this.animating = true;
+                        pickFruitSound.play();
+                    }
+                }
+
+                for(let i = 0; i < this.body.length - 1; i++){
+                    if(nextPos[0] == this.body[i][0] && nextPos[1] == this.body[i][1]){
+                        lose = true;
+                    }
+                }
             }
 
             this.draw = function(){
@@ -133,17 +374,103 @@
             update();
             draw();
 
+            if(lose){
+                gameOver();
+                return;
+            }
+            if(winner){
+                win();
+                return;
+            }
+
             setTimeout(run, 1000/FPS);
+        }
+
+        function gameOver(){
+            let maxScore = localStorage.getItem('score');
+            const currentScore = snake.body.length;
+            if(maxScore < currentScore){
+                maxScore = currentScore;
+                localStorage.setItem('score', maxScore);
+            }
+
+            const gameOverText = "GAME OVER";
+            const scoreText = "SCORE: " + currentScore;
+            const maxScoreText = "MAX SCORE: " + maxScore;
+            const continueText = isMobileDevice() ? "Toque para continuar" : "Pressione qualquer tecla para continuar";
+            ctx.fillStyle = '#97cec2';
+            ctx.font = tileSize*2.5 + 'px Arial';
+            ctx.fillText(gameOverText, WIDTH/2 - ctx.measureText(gameOverText).width/2, HEIGTH/2 - 50);
+            ctx.font = tileSize*1.5 + 'px Arial';
+            ctx.fillText(scoreText, WIDTH/2 - ctx.measureText(scoreText).width/2, HEIGTH/2 + 10);
+            ctx.fillText(maxScoreText, WIDTH/2 - ctx.measureText(maxScoreText).width/2, HEIGTH/2 + 50);
+            ctx.font = tileSize*1 + 'px Arial';
+            ctx.fillText(continueText, WIDTH/2 - ctx.measureText(continueText).width/2, HEIGTH/2 + 100);
+
+            themeMusic.stop();
+            loseSound.play();
+        }
+
+        function win(){
+            let maxScore = localStorage.getItem('score');
+            const currentScore = snake.body.length;
+            if(maxScore < currentScore){
+                maxScore = currentScore;
+                localStorage.setItem('score', maxScore);
+            }
+
+            const winText = "WIN :D";
+            const scoreText = "SCORE: " + currentScore;
+            ctx.fillStyle = '#97cec2';
+            ctx.font = tileSize*3.5 + 'px Arial';
+            ctx.fillText(winText, WIDTH/2 - ctx.measureText(winText).width/2, HEIGTH/2 - 50);
+            ctx.font = tileSize*1.5 + 'px Arial';
+            ctx.fillText(scoreText, WIDTH/2 - ctx.measureText(scoreText).width/2, HEIGTH/2 + 20);
+
+            themeMusic.stop();
+            winSound.play();
         }
 
         function update(){
             snake.update();
+            if(playing){
+                if(totalFruits > snake.body.length + fruits.locations.length){
+                    if(!timeToNewFruit){
+                        fruits.insertAt(Math.floor(Math.random() * WIDTH/tileSize), Math.floor(Math.random() * HEIGTH/tileSize))
+                        timeToNewFruit = newFruitDelay;
+                    }
+                    timeToNewFruit--;
+                }
+            }
+            if(totalFruits <= snake.body.length){
+                winner = true;
+            }
         }
 
         function draw(){
             ctx.clearRect(0, 0, WIDTH, HEIGTH);
 
             snake.draw();
+
+            fruits.draw();
+
+            if(!playing){
+                playLabel.draw();
+            }
+        }
+
+        function Sound(src) {
+            this.sound = document.createElement("audio");
+            this.sound.src = src;
+            this.sound.setAttribute("preload", "auto");
+            this.sound.setAttribute("controls", "none");
+
+            this.play = function(){
+                this.sound.play();
+            }
+            this.stop = function(){
+                this.sound.pause();
+            }
         }
 
         init();
