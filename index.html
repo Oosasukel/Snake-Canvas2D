@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Snake</title>
+
+    <style>
+        canvas {
+            background-color: #66157A;
+            margin: auto;
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+    </style>
+</head>
+<body>
+    
+    <script>
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        let WIDTH = 600;
+        let HEIGTH = 600;
+        const FPS = 30;
+        let tileSize;
+        let snake;
+        let playing;
+        const keys = {
+            left: 65,
+            right: 68,
+            up: 87,
+            down: 83
+        }
+
+        window.addEventListener('keydown', keyDown);
+        window.addEventListener('resize', resizeWindow);
+
+        function keyDown(event){
+            if(!playing && (event.keyCode == keys.up || event.keyCode == keys.down || event.keyCode == keys.left || event.keyCode == keys.right)){
+                playing = true;
+            }
+
+            switch(event.keyCode){
+                case keys.left:
+                    snake.direction = [-1, 0];
+                    break;
+                case keys.right:
+                    snake.direction = [1, 0];
+                    break;
+                case keys.up:
+                    snake.direction = [0, -1];
+                    break;
+                case keys.down:
+                    snake.direction = [0, 1];
+                    break;
+            }
+        }
+
+        function resizeWindow(){
+            WIDTH = window.innerWidth;
+            HEIGTH = window.innerHeight;
+            canvas.width = WIDTH;
+            canvas.height = HEIGTH;
+            
+            tileSize = Math.max(Math.floor(HEIGTH/60), Math.floor(WIDTH/60));
+        }
+
+        function newGame(){
+            snake = new Snake();
+            playing = false;
+        }
+
+        function Snake(){
+            this.body = [[10,10], [10,11], [10,12]];
+            this.color = '#99ff66'; //A686C2
+            this.direction = [0, -1];
+
+            this.update = function(){
+                let nextPos = [this.body[0][0] + this.direction[0], this.body[0][1] + this.direction[1]];
+
+                if(!playing){
+                    if(this.direction[1] == -1 && nextPos[1] <= (HEIGTH * 0.1)/tileSize){
+                        this.direction = [1, 0];
+                    }
+                    else if(this.direction[1] == 1 && nextPos[1] >= (HEIGTH * 0.9)/tileSize){
+                        this.direction = [-1, 0];
+                    }
+                    else if(this.direction[0] == -1 && nextPos[0] <= (WIDTH * 0.1)/tileSize){
+                        this.direction = [0, -1];
+                    }
+                    else if(this.direction[0] == 1 && nextPos[0] >= (WIDTH * 0.9)/tileSize){
+                        this.direction = [0, 1];
+                    }
+                }
+
+                if(this.body[1][0] == nextPos[0] && this.body[1][1] == nextPos[1]){
+                    this.body.reverse();
+                    nextPos = [this.body[0][0] + this.direction[0], this.body[0][1] + this.direction[1]];
+                }
+
+                this.body.pop();
+                this.body.splice(0, 0, nextPos)
+            }
+
+            this.insert = function(){
+                let nextPos = [this.body[0][0] + this.direction[0], this.body[0][1] + this.direction[1]];
+
+                this.body.splice(0, 0, nextPos)
+            }
+
+            this.draw = function(){
+                ctx.fillStyle = this.color;
+
+                for(let i = 0; i < this.body.length; i++){
+                    ctx.fillRect(this.body[i][0] * tileSize, this.body[i][1] * tileSize, tileSize, tileSize);
+                }
+            }
+        }
+
+        function init(){
+            document.body.appendChild(canvas);
+            resizeWindow();
+
+            newGame();
+            run();
+        }
+
+        function run(){
+            update();
+            draw();
+
+            setTimeout(run, 1000/FPS);
+        }
+
+        function update(){
+            snake.update();
+        }
+
+        function draw(){
+            ctx.clearRect(0, 0, WIDTH, HEIGTH);
+
+            snake.draw();
+        }
+
+        init();
+    </script>
+</body>
+</html>
