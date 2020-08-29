@@ -33,9 +33,9 @@
         const ctx = canvas.getContext('2d');
         let WIDTH = 600;
         let HEIGTH = 600;
-        const FPS = 8;
+        const FPS = 6;
         let tileSize;
-        const tilesCount = 30;
+        const tilesCount = 16;
         let snake;
         let playLabel;
         let playing;
@@ -50,7 +50,7 @@
         let lose;
         let fruits;
         let timeToNewFruit;
-        const newFruitDelay = 6;
+        const newFruitDelay = 4;
         let canMove;
         let totalFruits;
         let winner;
@@ -59,6 +59,7 @@
         const loseSound = new Sound('./sounds/lose sound 1_0.wav');
         const winSound = new Sound('./sounds/Win sound.wav');
         let firstClick;
+        let avaiableTiles;
 
         window.addEventListener('touchstart', touchStart);
         window.addEventListener('touchmove', touchMove);
@@ -114,6 +115,10 @@
                 }
                 playing = true;
             }
+            
+            if(lose){
+                init();
+            }
         }
 
         function openFullscreen() {
@@ -145,10 +150,6 @@
             event.preventDefault();
             const touch = event.touches[0];
             globalTouch = [touch.pageX, touch.pageY];
-            
-            if(lose){
-                init();
-            }
         }
 
         function keyDown(event){
@@ -205,7 +206,13 @@
             canvas.width = WIDTH;
             canvas.height = HEIGTH;
 
-            totalFruits = WIDTH * HEIGTH;
+            totalFruits = WIDTH/tileSize * HEIGTH/tileSize;
+
+            avaiableTiles = [];
+            for(let i = 0; i < HEIGTH/tileSize * WIDTH/tileSize; i++){
+                avaiableTiles.push(1);
+            }
+            snake.updateAvaiableTiles();
         }
 
         function isMobileDevice(){
@@ -271,13 +278,13 @@
 
             this.draw = function(){
                 ctx.fillStyle = this.color;
-                ctx.font = tileSize*2 + 'px Arial';
+                ctx.font = window.innerWidth * 0.05 + 'px Arial';
                 ctx.fillText(this.text, WIDTH/2 - ctx.measureText(this.text).width/2, HEIGTH/2);
             }
         }
 
         function Snake(){
-            this.body = [[10,10], [10,11], [10,12]];
+            this.body = [[1, 3], [1, 4], [1, 5]];
             this.color = '#19342e';
             this.direction = [0, -1];
             this.timeAnimation = 2;
@@ -289,6 +296,7 @@
                 let nextPos = [this.body[0][0] + this.direction[0], this.body[0][1] + this.direction[1]];
                 canMove = true;
 
+                avaiableTiles[this.body[this.body.length - 1][1] * WIDTH/tileSize + this.body[this.body.length - 1][0]] = 1;
                 this.detectCollision(nextPos);
 
                 if(!playing){
@@ -309,8 +317,17 @@
                 this.body.pop();
                 this.body.splice(0, 0, nextPos);
 
+                avaiableTiles[nextPos[1] * WIDTH/tileSize + nextPos[0]] = 0;
+
                 if(this.animating){
                     this.animation();
+                }
+
+            }
+
+            this.updateAvaiableTiles = function(){
+                for(let i = 0; i < this.body.length; i++){
+                    avaiableTiles[this.body[i][1] * WIDTH/tileSize + this.body[i][0]] = 0;
                 }
             }
 
@@ -339,6 +356,7 @@
 
                 for(let i = 0; i < fruits.locations.length; i++){
                     if(nextPos[0] == fruits.locations[i][0] && nextPos[1] == fruits.locations[i][1]){
+                        avaiableTiles[fruits.locations[i][1] * WIDTH/tileSize + fruits.locations[i][0]] = 0;
                         fruits.remove(i);
                         this.body.push(this.body[this.body.length - 1]);
                         this.currentSprite = 0;
@@ -365,9 +383,9 @@
 
         function init(){
             document.body.appendChild(canvas);
-            resizeWindow();
 
             newGame();
+            resizeWindow();
             run();
         }
 
@@ -400,13 +418,13 @@
             const maxScoreText = "MAX SCORE: " + maxScore;
             const continueText = isMobileDevice() ? "Toque para continuar" : "Pressione qualquer tecla para continuar";
             ctx.fillStyle = '#97cec2';
-            ctx.font = tileSize*2.5 + 'px Arial';
-            ctx.fillText(gameOverText, WIDTH/2 - ctx.measureText(gameOverText).width/2, HEIGTH/2 - 50);
-            ctx.font = tileSize*1.5 + 'px Arial';
+            ctx.font = window.innerWidth * 0.07 + 'px Arial';
+            ctx.fillText(gameOverText, WIDTH/2 - ctx.measureText(gameOverText).width/2, HEIGTH/2 - 70);
+            ctx.font = window.innerWidth * 0.05 + 'px Arial';
             ctx.fillText(scoreText, WIDTH/2 - ctx.measureText(scoreText).width/2, HEIGTH/2 + 10);
-            ctx.fillText(maxScoreText, WIDTH/2 - ctx.measureText(maxScoreText).width/2, HEIGTH/2 + 50);
-            ctx.font = tileSize*1 + 'px Arial';
-            ctx.fillText(continueText, WIDTH/2 - ctx.measureText(continueText).width/2, HEIGTH/2 + 100);
+            ctx.fillText(maxScoreText, WIDTH/2 - ctx.measureText(maxScoreText).width/2, HEIGTH/2 + 70);
+            ctx.font = window.innerWidth * 0.03 + 'px Arial';
+            ctx.fillText(continueText, WIDTH/2 - ctx.measureText(continueText).width/2, HEIGTH/2 + 130);
 
             themeMusic.stop();
             loseSound.play();
@@ -423,9 +441,9 @@
             const winText = "WIN :D";
             const scoreText = "SCORE: " + currentScore;
             ctx.fillStyle = '#97cec2';
-            ctx.font = tileSize*3.5 + 'px Arial';
-            ctx.fillText(winText, WIDTH/2 - ctx.measureText(winText).width/2, HEIGTH/2 - 50);
-            ctx.font = tileSize*1.5 + 'px Arial';
+            ctx.font = window.innerWidth * 0.07 + 'px Arial';
+            ctx.fillText(winText, WIDTH/2 - ctx.measureText(winText).width/2, HEIGTH/2 - 70);
+            ctx.font = window.innerWidth * 0.05 + 'px Arial';
             ctx.fillText(scoreText, WIDTH/2 - ctx.measureText(scoreText).width/2, HEIGTH/2 + 20);
 
             themeMusic.stop();
@@ -437,7 +455,21 @@
             if(playing){
                 if(totalFruits > snake.body.length + fruits.locations.length){
                     if(!timeToNewFruit){
-                        fruits.insertAt(Math.floor(Math.random() * WIDTH/tileSize), Math.floor(Math.random() * HEIGTH/tileSize))
+
+                        let avaiableTilesOnly = [];
+
+                        for(let i = 0; i < avaiableTiles.length; i++){
+                            if(avaiableTiles[i]){
+                                let y = Math.floor(i/(WIDTH/tileSize));
+                                let x = i - (WIDTH/tileSize)*y;
+
+                                avaiableTilesOnly.push([x, y]);
+                            }
+                        }
+                        
+                        let tileChoosed = avaiableTilesOnly[Math.floor(Math.random() * avaiableTilesOnly.length)];
+                        avaiableTiles[(WIDTH/tileSize)*tileChoosed[1] + tileChoosed[0]] = 0;
+                        fruits.insertAt(tileChoosed[0], tileChoosed[1]);
                         timeToNewFruit = newFruitDelay;
                     }
                     timeToNewFruit--;
